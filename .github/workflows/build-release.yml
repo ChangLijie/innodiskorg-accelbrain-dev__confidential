@@ -76,15 +76,14 @@ jobs:
 
       - name: Wait for Docker build workflow to complete
         id: wait_for_build
-        uses: fjogeleit/workflow-run-wait-action@v1
-        timeout-minutes: 60
+        uses: lewagon/wait-on-check-action@v1.3.2
         with:
-          owner: ${{ github.repository_owner }}
-          repo: ${{ github.event.repository.name }}
-          workflow: docker-build.yaml
-          ref: refs/tags/v${{ steps.get_version.outputs.version }}
-          waitInterval: 10
-          accessToken: ${{ secrets.GITHUB_TOKEN }}
+          ref: refs/tags/v${{ env.VERSION }}
+          check-name: 'Create and publish Docker images with specific build args'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+        timeout-minutes: 60
+
 
       - name: Checkout AccelBrain-dev__confidential repository
         if: steps.wait_for_build.outputs.conclusion == 'success'
