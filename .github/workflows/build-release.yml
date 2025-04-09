@@ -78,7 +78,7 @@ jobs:
         id: wait_for_build
         uses: lewagon/wait-on-check-action@v1.3.2
         with:
-          ref: refs/tags/v${{ env.VERSION }}
+          ref: refs/tags/v${{ steps.get_version.outputs.version }}
           check-name: 'Create and publish Docker images with specific build args'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 10
