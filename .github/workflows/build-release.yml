@@ -74,15 +74,18 @@ jobs:
             });
             console.log('Triggered Docker build workflow');
 
-      - name: Wait for Docker build workflow to complete
-        id: wait_for_build
-        uses: lewagon/wait-on-check-action@v1.3.2
+      - name: Trigger and wait for Docker build workflow
+        id: trigger_and_wait
+        uses: convictional/trigger-workflow-and-wait@v1.6.4
         with:
-          ref: refs/tags/v${{ steps.get_version.outputs.version }}
-          check-name: 'Create and publish Docker images with specific build args'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 10
-        timeout-minutes: 60
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow_file_name: docker-build.yaml
+          ref: v${{ steps.get_version.outputs.version }}
+          client_payload: '{}'
+          wait_interval: 10 # 秒數
+          timeout_seconds: 3600 # 最長等待 1 小時
 
 
       - name: Checkout AccelBrain-dev__confidential repository
