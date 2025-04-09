@@ -76,14 +76,15 @@ jobs:
 
       - name: Wait for Docker build workflow to complete
         id: wait_for_build
-        uses: tyriis/gh-workflow-wait-action@v1
+        uses: "WyriHaximus/github-action-wait-for-status@v1"
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ github.repository }}
-          workflow: docker-build.yaml
-          ref: v${{ steps.get_version.outputs.version }}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          ref: refs/tags/v${{ steps.get_version.outputs.version }}
+          name: "Create and publish Docker images with specific build args"
+          check_interval: 10
           timeout: 3600
-
+          
       - name: Checkout AccelBrain-dev__confidential repository
         if: steps.wait_for_build.outputs.conclusion == 'success'
         uses: actions/checkout@v4
