@@ -60,20 +60,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Trigger Docker build workflow
-        id: trigger_docker_build
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'docker-build.yaml',
-              ref: 'v${{ steps.get_version.outputs.version }}',
-            });
-            console.log('Triggered Docker build workflow');
-
       - name: Trigger and wait for Docker build workflow
         id: trigger_and_wait
         uses: convictional/trigger-workflow-and-wait@v1.6.4
@@ -84,12 +70,11 @@ jobs:
           workflow_file_name: docker-build.yaml
           ref: v${{ steps.get_version.outputs.version }}
           client_payload: '{}'
-          wait_interval: 10 # 秒數
-          timeout_seconds: 3600 # 最長等待 1 小時
-
+          wait_interval: 10
+          timeout_seconds: 3600
 
       - name: Checkout AccelBrain-dev__confidential repository
-        if: steps.wait_for_build.outputs.conclusion == 'success'
+        if: steps.trigger_and_wait.outputs.conclusion == 'success'
         uses: actions/checkout@v4
         with:
           repository: ChangLijie/AccelBrain-dev__confidential
@@ -97,13 +82,13 @@ jobs:
           path: accelbrain-confidential
 
       - name: Update docker-compose.yaml image tag
-        if: steps.wait_for_build.outputs.conclusion == 'success'
+        if: steps.trigger_and_wait.outputs.conclusion == 'success'
         run: |
           cd accelbrain-confidential
           sed -i "s|innodiskorg/open-webui:.*|innodiskorg/open-webui:v${{ steps.get_version.outputs.version }}|g" docker-compose.yaml
 
       - name: Commit and push changes
-        if: steps.wait_for_build.outputs.conclusion == 'success'
+        if: steps.trigger_and_wait.outputs.conclusion == 'success'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: bump open-webui image to v${{ steps.get_version.outputs.version }}"
