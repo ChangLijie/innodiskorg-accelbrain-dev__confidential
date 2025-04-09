@@ -78,6 +78,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           checkName: 'Create and publish Docker images with specific build args'
           ref: refs/tags/v${{ steps.get_version.outputs.version }}
+          timeoutSeconds: 3600
 
       - name: Checkout AccelBrain-dev__confidential repository
         if: ${{ steps.create_release.outcome == 'success' && steps.wait_for_build.outputs.conclusion == 'success' }}
