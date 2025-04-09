@@ -3,8 +3,9 @@ name: Release
 on:
   push:
     branches:
-      - main # or whatever branch you want to use
+      - main
   workflow_dispatch:
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -32,10 +33,11 @@ jobs:
           CHANGELOG_CONTENT=$(awk 'BEGIN {print_section=0;} /^## \[/ {if (print_section == 0) {print_section=1;} else {exit;}} print_section {print;}' CHANGELOG.md)
           CHANGELOG_ESCAPED=$(echo "$CHANGELOG_CONTENT" | sed ':a;N;$!ba;s/\n/%0A/g')
           echo "Extracted latest release notes from CHANGELOG.md:" 
-          echo -e "$CHANGELOG_CONTENT" 
+          echo -e "$CHANGELOG_CONTENT"
           echo "::set-output name=content::$CHANGELOG_ESCAPED"
 
       - name: Create GitHub release
+        id: create_release
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -47,8 +49,8 @@ jobs:
               tag_name: `v${{ steps.get_version.outputs.version }}`,
               name: `v${{ steps.get_version.outputs.version }}`,
               body: changelog,
-            })
-            console.log(`Created release ${release.data.html_url}`)
+            });
+            console.log(`Created release ${release.data.html_url}`);
 
       - name: Upload package to GitHub release
         uses: actions/upload-artifact@v4
@@ -61,27 +63,68 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Trigger Docker build workflow
+        id: trigger_docker_build
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            github.rest.actions.createWorkflowDispatch({
+            await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'docker-build.yaml',
               ref: 'v${{ steps.get_version.outputs.version }}',
-            })
+            });
+            console.log('Triggered Docker build workflow');
 
       - name: Wait for Docker build workflow to complete
         id: wait_for_build
-        uses: fountainhead/action-wait-for-check@v1.2.0
+        uses: actions/github-script@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          checkName: 'Create and publish Docker images with specific build args'
-          ref: refs/tags/v${{ steps.get_version.outputs.version }}
-          timeoutSeconds: 3600
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const workflowId = 'docker-build.yaml';
+            const ref = 'refs/tags/v${{ steps.get_version.outputs.version }}';
+            const timeout = 60 * 60 * 1000; // 1 hour in ms
+            const interval = 10000; // 10 seconds
+            const start = Date.now();
+
+            async function getWorkflowRun() {
+              const { data: runs } = await github.rest.actions.listWorkflowRuns({
+                owner,
+                repo,
+                workflow_id: workflowId,
+                event: 'workflow_dispatch',
+              });
+              return runs.workflow_runs.find(run => run.head_branch === ref);
+            }
+
+            let run;
+            while ((Date.now() - start) < timeout) {
+              run = await getWorkflowRun();
+              if (run) {
+                console.log(`Found workflow run: ${run.html_url}`);
+                if (run.status === 'completed') {
+                  if (run.conclusion === 'success') {
+                    console.log('Workflow completed successfully!');
+                    return;
+                  } else {
+                    throw new Error(`Workflow failed with conclusion: ${run.conclusion}`);
+                  }
+                } else {
+                  console.log(`Workflow status: ${run.status}, waiting...`);
+                }
+              } else {
+                console.log('Workflow run not found yet, waiting...');
+              }
+              await new Promise(resolve => setTimeout(resolve, interval));
+            }
+
+            throw new Error('Timeout waiting for workflow to complete');
 
       - name: Checkout AccelBrain-dev__confidential repository
-        if: ${{ steps.create_release.outcome == 'success' && steps.wait_for_build.outputs.conclusion == 'success' }}
+        if: ${{ steps.create_release.outcome == 'success' && steps.wait_for_build.outcome == 'success' }}
         uses: actions/checkout@v4
         with:
           repository: ChangLijie/AccelBrain-dev__confidential
@@ -89,13 +132,13 @@ jobs:
           path: accelbrain-confidential
 
       - name: Update docker-compose.yaml image tag
-        if: ${{ steps.create_release.outcome == 'success' && steps.wait_for_build.outputs.conclusion == 'success' }}
+        if: ${{ steps.create_release.outcome == 'success' && steps.wait_for_build.outcome == 'success' }}
         run: |
           cd accelbrain-confidential
           sed -i "s|innodiskorg/open-webui:.*|innodiskorg/open-webui:v${{ steps.get_version.outputs.version }}|g" docker-compose.yaml
 
       - name: Commit and push changes
-        if: ${{ steps.create_release.outcome == 'success' && steps.wait_for_build.outputs.conclusion == 'success' }}
+        if: ${{ steps.create_release.outcome == 'success' && steps.wait_for_build.outcome == 'success' }}
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: bump open-webui image to v${{ steps.get_version.outputs.version }}"
