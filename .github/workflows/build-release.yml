@@ -71,23 +71,31 @@ jobs:
               ref: 'v${{ steps.get_version.outputs.version }}',
             })
 
+      - name: Wait for Docker build workflow to complete
+        id: wait_for_build
+        uses: fountainhead/action-wait-for-check@v1.2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          checkName: 'Create and publish Docker images with specific build args'
+          ref: refs/tags/v${{ steps.get_version.outputs.version }}
+
       - name: Checkout AccelBrain-dev__confidential repository
-        if: ${{ steps.create_release.outcome == 'success' && steps.trigger_docker_build.outcome == 'success' }}
+        if: ${{ steps.create_release.outcome == 'success' && steps.wait_for_build.outputs.conclusion == 'success' }}
         uses: actions/checkout@v4
         with:
           repository: ChangLijie/AccelBrain-dev__confidential
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           path: accelbrain-confidential
 
       - name: Update docker-compose.yaml image tag
-        if: ${{ steps.create_release.outcome == 'success' && steps.trigger_docker_build.outcome == 'success' }}
+        if: ${{ steps.create_release.outcome == 'success' && steps.wait_for_build.outputs.conclusion == 'success' }}
         run: |
           cd accelbrain-confidential
           sed -i "s|innodiskorg/open-webui:.*|innodiskorg/open-webui:v${{ steps.get_version.outputs.version }}|g" docker-compose.yaml
 
       - name: Commit and push changes
-        if: ${{ steps.create_release.outcome == 'success' && steps.trigger_docker_build.outcome == 'success' }}
+        if: ${{ steps.create_release.outcome == 'success' && steps.wait_for_build.outputs.conclusion == 'success' }}
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore: bump accelbrain image to v${{ steps.get_version.outputs.version }}"
+          commit_message: "chore: bump open-webui image to v${{ steps.get_version.outputs.version }}"
           repository: ./accelbrain-confidential
