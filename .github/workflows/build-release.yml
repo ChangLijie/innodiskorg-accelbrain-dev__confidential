@@ -1,5 +1,3 @@
-name: Release
-
 on:
   push:
     branches:
@@ -25,14 +23,16 @@ jobs:
         id: get_version
         run: |
           VERSION=$(jq -r '.version' package.json)
-          echo "version=${VERSION}" >> $GITHUB_ENV
+          echo "::set-output name=version::$VERSION"
 
       - name: Extract latest CHANGELOG entry
         id: changelog
         run: |
           CHANGELOG_CONTENT=$(awk 'BEGIN {print_section=0;} /^## \[/ {if (print_section == 0) {print_section=1;} else {exit;}} print_section {print;}' CHANGELOG.md)
           CHANGELOG_ESCAPED=$(echo "$CHANGELOG_CONTENT" | sed ':a;N;$!ba;s/\n/%0A/g')
-          echo "content=${CHANGELOG_ESCAPED}" >> $GITHUB_ENV
+          echo "Extracted latest release notes from CHANGELOG.md:" 
+          echo -e "$CHANGELOG_CONTENT"
+          echo "::set-output name=content::$CHANGELOG_ESCAPED"
 
       - name: Create GitHub release
         id: create_release
@@ -40,12 +40,12 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const changelog = process.env.content;
+            const changelog = `${{ steps.changelog.outputs.content }}`;
             const release = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag_name: `v${process.env.version}`,
-              name: `v${process.env.version}`,
+              tag_name: `v${{ steps.get_version.outputs.version }}`,
+              name: `v${{ steps.get_version.outputs.version }}`,
               body: changelog,
             });
             console.log(`Created release ${release.data.html_url}`);
@@ -57,6 +57,8 @@ jobs:
           path: |
             .
             !.git
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Trigger Docker build workflow
         id: trigger_docker_build
@@ -68,7 +70,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'docker-build.yaml',
-              ref: `v${process.env.version}`,
+              ref: 'v${{ steps.get_version.outputs.version }}',
             });
             console.log('Triggered Docker build workflow');
 
@@ -79,7 +81,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
           workflow: docker-build.yaml
-          ref: v${{ env.version }}
+          ref: v${{ steps.get_version.outputs.version }}
           timeout: 3600
 
       - name: Checkout AccelBrain-dev__confidential repository
@@ -94,11 +96,11 @@ jobs:
         if: steps.wait_for_build.outputs.conclusion == 'success'
         run: |
           cd accelbrain-confidential
-          sed -i "s|innodiskorg/open-webui:.*|innodiskorg/open-webui:v${{ env.version }}|g" docker-compose.yaml
+          sed -i "s|innodiskorg/open-webui:.*|innodiskorg/open-webui:v${{ steps.get_version.outputs.version }}|g" docker-compose.yaml
 
       - name: Commit and push changes
         if: steps.wait_for_build.outputs.conclusion == 'success'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore: bump open-webui image to v${{ env.version }}"
+          commit_message: "chore: bump open-webui image to v${{ steps.get_version.outputs.version }}"
           repository: ./accelbrain-confidential
