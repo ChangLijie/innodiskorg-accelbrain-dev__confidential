@@ -18,7 +18,7 @@ jobs:
       - name: Update docker-compose.yaml image tag
         run: |
           cd accelbrain-confidential || (echo "Directory not found" && exit 1)
-          sed -i "s|innodiskorg/open-webui:.*|innodiskorg/open-webui:v${{ steps.get_version.outputs.version }}|g" docker-compose.yaml
+          sed -i "s|innodiskorg/open-webui:.*|innodiskorg/open-webui:v${{ steps.get_version.outputs.version }}|g" docker-compose.yml
 
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v5
