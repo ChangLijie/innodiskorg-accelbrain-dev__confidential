@@ -1,7 +1,5 @@
 on:
   push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
@@ -73,6 +71,18 @@ jobs:
           wait_interval: 10
           timeout_seconds: 3600
 
+      - name: Print Docker build workflow result
+        if: always()
+        run: |
+          if [ "${{ steps.trigger_and_wait.outputs.conclusion }}" = "success" ]; then
+            echo -e "\033[32m✅ Workflow Success!\033[0m"
+          else
+            echo -e "\033[31m❌ Workflow Failed!\033[0m"
+          fi
+          echo "Workflow conclusion: ${{ steps.trigger_and_wait.outputs.conclusion }}"
+          echo "Workflow run ID: ${{ steps.trigger_and_wait.outputs.id }}"
+          echo "Workflow URL: ${{ steps.trigger_and_wait.outputs.html_url }}"
+
       - name: Checkout AccelBrain-dev__confidential repository
         if: steps.trigger_and_wait.outputs.conclusion == 'success'
         uses: actions/checkout@v4
@@ -84,7 +94,7 @@ jobs:
       - name: Update docker-compose.yaml image tag
         if: steps.trigger_and_wait.outputs.conclusion == 'success'
         run: |
-          cd accelbrain-confidential
+          cd accelbrain-confidential || (echo "Directory not found" && exit 1)
           sed -i "s|innodiskorg/open-webui:.*|innodiskorg/open-webui:v${{ steps.get_version.outputs.version }}|g" docker-compose.yaml
 
       - name: Commit and push changes

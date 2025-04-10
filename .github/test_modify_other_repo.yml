@@ -1,0 +1,27 @@
+name: Test Update Docker Image Tag
+
+on:
+  workflow_dispatch: 
+
+jobs:
+  test-update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout AccelBrain-dev__confidential repository
+        uses: actions/checkout@v4
+        with:
+          repository: ChangLijie/AccelBrain-dev__confidential
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          path: accelbrain-confidential
+
+      - name: Update docker-compose.yaml image tag
+        run: |
+          cd accelbrain-confidential || (echo "Directory not found" && exit 1)
+          sed -i "s|innodiskorg/open-webui:.*|innodiskorg/open-webui:v${{ steps.get_version.outputs.version }}|g" docker-compose.yaml
+
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: bump open-webui image to v${{ steps.get_version.outputs.version }}"
+          repository: ./accelbrain-confidential
