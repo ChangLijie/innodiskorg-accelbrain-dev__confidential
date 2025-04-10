@@ -48,7 +48,7 @@ jobs:
             print $0
             if (!inserted && $0 ~ /Semantic Versioning/) {
               print ""
-              print "## [" version "] - "
+              print "## [" version "] "
               print ""
               print "### Fixed"
               print ""
