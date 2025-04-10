@@ -8,12 +8,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for changes in package.json
+        run: |
+          git diff --cached --diff-filter=d package.json || {
+            echo "No changes to package.json"
+            exit 1
+          }
       - name: Get version number from package.json
         id: get_version
         run: |
           VERSION=$(jq -r '.version' package.json)
           echo "::set-output name=version::$VERSION"
-          
+
       - name: Checkout AccelBrain-dev__confidential repository
         uses: actions/checkout@v4
         with:
