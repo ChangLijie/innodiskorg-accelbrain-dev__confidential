@@ -42,7 +42,7 @@ jobs:
           VERSION="v${{ steps.get_version.outputs.version }}"
           echo "Update CHANGELOG.md with version $VERSION"
 
-          awk -v version="$VERSION" -v '
+          awk -v version="$VERSION" '
           BEGIN { inserted=0 }
           {
             print $0
