@@ -54,17 +54,17 @@ jobs:
           echo "New version: $NEW_VERSION"
 
           # 插入新版本
-          awk -v version="$NEW_VERSION" '
+          awk -v accelbrain_version="$NEW_VERSION" -v chatbot_version="v${{ steps.get_version.outputs.version }}" '
           BEGIN { inserted=0 }
           {
             print $0
             if (!inserted && $0 ~ /Semantic Versioning/) {
               print ""
-              print "## [" version "]"
+              print "## [" accelbrain_version "]"
               print ""
               print "### Fixed"
               print ""
-              print "- **Update the chatbot to " version "**"
+              print "- **Update the chatbot to " chatbot_version "**"
               print ""
               inserted=1
             }
