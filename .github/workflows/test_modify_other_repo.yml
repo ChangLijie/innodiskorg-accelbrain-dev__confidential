@@ -39,16 +39,28 @@ jobs:
       - name: Update CHANGELOG.md
         run: |
           cd accelbrain-confidential
-          VERSION="v${{ steps.get_version.outputs.version }}"
-          echo "Update CHANGELOG.md with version $VERSION"
+          echo "Reading current version from CHANGELOG.md"
 
-          awk -v version="$VERSION" '
+          # 先取出上一個版本號（第一個 [vX.X]）
+          PREVIOUS_VERSION=$(grep -oP '^## \[v\K[0-9]+\.[0-9]+' CHANGELOG.md | head -n 1)
+          echo "Previous version: $PREVIOUS_VERSION"
+
+          # 用 bash 運算新版本（主要是 minor +1）
+          MAJOR_VERSION=$(echo $PREVIOUS_VERSION | cut -d. -f1)
+          MINOR_VERSION=$(echo $PREVIOUS_VERSION | cut -d. -f2)
+          NEW_MINOR_VERSION=$((MINOR_VERSION + 1))
+          NEW_VERSION="v${MAJOR_VERSION}.${NEW_MINOR_VERSION}"
+
+          echo "New version: $NEW_VERSION"
+
+          # 插入新版本
+          awk -v version="$NEW_VERSION" '
           BEGIN { inserted=0 }
           {
             print $0
             if (!inserted && $0 ~ /Semantic Versioning/) {
               print ""
-              print "## [" version "] "
+              print "## [" version "]"
               print ""
               print "### Fixed"
               print ""
