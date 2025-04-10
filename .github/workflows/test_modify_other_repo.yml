@@ -8,6 +8,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Get version number from package.json
+        id: get_version
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          echo "::set-output name=version::$VERSION"
+          
       - name: Checkout AccelBrain-dev__confidential repository
         uses: actions/checkout@v4
         with:
@@ -19,12 +25,12 @@ jobs:
       - name: Update docker-compose.yml image tag
         run: |
           cd accelbrain-confidential || (echo "Directory not found" && exit 1)
-          sed -i "s|innodiskorg/open-webui:.*|innodiskorg/open-webui:vtest|g" docker-compose.yml
+          sed -i "s|innodiskorg/open-webui:.*|innodiskorg/open-webui:v${{ steps.get_version.outputs.version }}|g" docker-compose.yml
 
       - name: Update CHANGELOG.md
         run: |
           cd accelbrain-confidential
-          VERSION="vtest"
+          VERSION="v${{ steps.get_version.outputs.version }}"
           echo "Update CHANGELOG.md with version $VERSION"
 
           awk -v version="$VERSION" -v '
@@ -48,5 +54,5 @@ jobs:
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore: bump open-webui image to vtest"
+          commit_message: "chore: bump open-webui image to v${{ steps.get_version.outputs.version }}"
           repository: ./accelbrain-confidential
