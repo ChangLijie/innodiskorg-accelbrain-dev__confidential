@@ -1,5 +1,4 @@
 on:
-  push:
   workflow_dispatch:
 
 jobs:
@@ -88,17 +87,41 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ChangLijie/AccelBrain-dev__confidential
+          ref: test
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           path: accelbrain-confidential
 
-      - name: Update docker-compose.yaml image tag
+      - name: Update docker-compose.yml image tag
         if: steps.trigger_and_wait.outputs.conclusion == 'success'
         run: |
           cd accelbrain-confidential || (echo "Directory not found" && exit 1)
-          sed -i "s|innodiskorg/open-webui:.*|innodiskorg/open-webui:v${{ steps.get_version.outputs.version }}|g" docker-compose.yaml
+          sed -i "s|innodiskorg/open-webui:.*|innodiskorg/open-webui:v${{ steps.get_version.outputs.version }}|g" docker-compose.yml
+
+      - name: Update CHANGELOG.md
+        run: |
+          cd accelbrain-confidential
+          VERSION="v${{ steps.get_version.outputs.version }}"
+          echo "Update CHANGELOG.md with version $VERSION"
+
+          awk -v version="$VERSION" -v '
+          BEGIN { inserted=0 }
+          {
+            print $0
+            if (!inserted && $0 ~ /Semantic Versioning/) {
+              print ""
+              print "## [" version "] - "
+              print ""
+              print "### Fixed"
+              print ""
+              print "- **Update the chatbot to " version "**"
+              print ""
+              inserted=1
+            }
+          }' CHANGELOG.md > CHANGELOG.tmp && mv CHANGELOG.tmp CHANGELOG.md
+
+          cat CHANGELOG.md
 
       - name: Commit and push changes
-        if: steps.trigger_and_wait.outputs.conclusion == 'success'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: bump open-webui image to v${{ steps.get_version.outputs.version }}"
