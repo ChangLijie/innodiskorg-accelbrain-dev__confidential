@@ -98,6 +98,7 @@ jobs:
           sed -i "s|innodiskorg/open-webui:.*|innodiskorg/open-webui:v${{ steps.get_version.outputs.version }}|g" docker-compose.yml
 
       - name: Update CHANGELOG.md
+        if: steps.trigger_and_wait.outputs.conclusion == 'success'
         run: |
           cd accelbrain-confidential
           VERSION="v${{ steps.get_version.outputs.version }}"
@@ -122,6 +123,7 @@ jobs:
           cat CHANGELOG.md
 
       - name: Commit and push changes
+        if: steps.trigger_and_wait.outputs.conclusion == 'success'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: bump open-webui image to v${{ steps.get_version.outputs.version }}"
