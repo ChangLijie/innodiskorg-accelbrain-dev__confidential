@@ -25,16 +25,15 @@ jobs:
         run: |
           cd accelbrain-confidential
           VERSION="vtest"
-          TODAY=$(date +"%Y-%m-%d")
           echo "Update CHANGELOG.md with version $VERSION"
 
-          awk -v version="$VERSION" -v today="$TODAY" '
+          awk -v version="$VERSION" -v '
           BEGIN { inserted=0 }
           {
             print $0
             if (!inserted && $0 ~ /Semantic Versioning/) {
               print ""
-              print "## [" version "] - " today
+              print "## [" version "] - "
               print ""
               print "### Fixed"
               print ""
