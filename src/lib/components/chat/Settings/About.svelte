@@ -5,6 +5,7 @@
 	import { WEBUI_NAME, config, showChangelog } from '$lib/stores';
 	import { compareVersion } from '$lib/utils';
 	import { onMount, getContext } from 'svelte';
+	import { getChangelog } from '$lib/apis';
 
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 
@@ -33,12 +34,17 @@
 		console.log(updateAvailable);
 	};
 
+	let changelog = null;
+
 	onMount(async () => {
 		ollamaVersion = await getOllamaVersion(localStorage.token).catch((error) => {
 			return '';
 		});
 
-		checkForVersionUpdates();
+		const res = await getChangelog();
+		changelog = res;
+
+		//checkForVersionUpdates();
 	});
 </script>
 
@@ -54,9 +60,9 @@
 			<div class="flex w-full justify-between items-center">
 				<div class="flex flex-col text-xs text-gray-700 dark:text-gray-200">
 					<div class="flex gap-1">
-						<Tooltip content={WEBUI_BUILD_HASH}>
-							v{WEBUI_VERSION}
-						</Tooltip>
+						
+						v{(changelog)?Object.keys(changelog).length > 0 ? Object.keys(changelog)[0]: WEBUI_VERSION: WEBUI_VERSION}
+						
 					</div>
 				</div>
 				<button
